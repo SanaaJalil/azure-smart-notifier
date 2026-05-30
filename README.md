@@ -7,7 +7,7 @@ A Python-based system that accepts messages via a REST API, routes them through 
 Client → REST API (FastAPI) → Azure Service Bus → Azure Function → SQL Server
 
 ## Project Structure
-
+'''
 azure-smart-notifier/
 ├── api/                  # FastAPI REST app (POST /notify)
 ├── function_app/         # Azure Function (Service Bus trigger)
@@ -15,7 +15,7 @@ azure-smart-notifier/
 ├── tests/                # Pytest unit tests
 ├── azure-pipelines.yml   # CI/CD pipeline
 └── .env.example          # Environment variable template
-
+'''
 ## Technologies Used
 
 - Python 3.10+ with FastAPI
