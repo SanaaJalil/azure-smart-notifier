@@ -1,13 +1,18 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from azure.servicebus import ServiceBusClient, ServiceBusMessage
 import os
 import logging
+import json
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+SERVICEBUS_CONNECTION_STRING = os.getenv("SERVICEBUS_CONNECTION_STRING")
+SERVICEBUS_QUEUE_NAME = os.getenv("SERVICEBUS_QUEUE_NAME", "notifications")
 
 app = FastAPI(
     title="Azure Smart Notifier",
@@ -34,6 +39,20 @@ class NotificationResponse(BaseModel):
         orm_mode = True
 
 
+def send_to_service_bus(payload: dict):
+    try:
+        client = ServiceBusClient.from_connection_string(SERVICEBUS_CONNECTION_STRING)
+        with client:
+            sender = client.get_queue_sender(queue_name=SERVICEBUS_QUEUE_NAME)
+            with sender:
+                message = ServiceBusMessage(json.dumps(payload))
+                sender.send_messages(message)
+                logger.info(f"Message sent to Service Bus queue: {SERVICEBUS_QUEUE_NAME}")
+    except Exception as e:
+        logger.error(f"Failed to send message to Service Bus: {e}")
+        raise
+
+
 @app.get("/")
 def root():
     return {"status": "Azure Smart Notifier is running"}
@@ -54,7 +73,13 @@ def send_notification(request: NotificationRequest):
     if not request.recipient:
         raise HTTPException(status_code=400, detail="Recipient cannot be empty")
 
-    logger.info(f"Notification queued successfully for {request.recipient}")
+    payload = {
+        "message": request.message,
+        "recipient": request.recipient,
+        "priority": request.priority
+    }
+
+    send_to_service_bus(payload)
 
     return NotificationResponse(
         status="queued",
